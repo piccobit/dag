@@ -2,14 +2,16 @@ package dag
 
 import (
 	"fmt"
-	"github.com/go-test/deep"
 	"strconv"
 	"testing"
+
+	"github.com/go-test/deep"
 )
 
 type iVertex struct{ value int }
 
-func (v iVertex) ID() string { return fmt.Sprintf("%d", v.value) }
+func (v iVertex) ID() string   { return fmt.Sprintf("%d", v.value) }
+func (v iVertex) Hash() string { return fmt.Sprintf("%v", v) }
 
 type foobar struct {
 	A string

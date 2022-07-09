@@ -3,8 +3,9 @@ package dag
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 // IDInterface describes the interface a type must implement in order to
@@ -14,6 +15,10 @@ import (
 // generated ids (as of adding them to the graph).
 type IDInterface interface {
 	ID() string
+}
+
+type Hasher interface {
+	Hash() string
 }
 
 // DAG implements the data structure of the DAG.
@@ -83,15 +88,26 @@ func (d *DAG) addVertexByID(id string, v interface{}) error {
 	if v == nil {
 		return VertexNilError{}
 	}
-	if _, exists := d.vertices[v]; exists {
-		return VertexDuplicateError{v}
-	}
 
 	if _, exists := d.vertexIds[id]; exists {
 		return IDDuplicateError{id}
 	}
 
-	d.vertices[v] = id
+	if h, ok := v.(Hasher); ok {
+		hash := h.Hash()
+		if _, exists := d.vertices[hash]; exists {
+			return VertexDuplicateError{v}
+		}
+
+		d.vertices[hash] = id
+	} else {
+		if _, exists := d.vertices[v]; exists {
+			return VertexDuplicateError{v}
+		}
+
+		d.vertices[v] = id
+	}
+
 	d.vertexIds[id] = v
 
 	return nil
@@ -633,7 +649,7 @@ func (d *DAG) GetDescendants(id string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	v := d.vertexIds[id]
-	//return copyMap(d.getAncestors(v)), nil
+	// return copyMap(d.getAncestors(v)), nil
 
 	descendants := make(map[string]interface{})
 	for dv := range d.getDescendants(v) {
@@ -673,10 +689,10 @@ func (d *DAG) getDescendants(v interface{}) map[interface{}]struct{} {
 	if children, ok := d.outboundEdge[v]; ok {
 
 		// for each child use a goroutine to collect its descendants
-		//var waitGroup sync.WaitGroup
-		//waitGroup.Add(len(children))
+		// var waitGroup sync.WaitGroup
+		// waitGroup.Add(len(children))
 		for child := range children {
-			//go func(child interface{}, mu *sync.Mutex, cache map[interface{}]bool) {
+			// go func(child interface{}, mu *sync.Mutex, cache map[interface{}]bool) {
 			childDescendants := d.getDescendants(child)
 			mu.Lock()
 			for descendant := range childDescendants {
@@ -684,10 +700,10 @@ func (d *DAG) getDescendants(v interface{}) map[interface{}]struct{} {
 			}
 			cache[child] = struct{}{}
 			mu.Unlock()
-			//waitGroup.Done()
-			//}(child, &mu, cache)
+			// waitGroup.Done()
+			// }(child, &mu, cache)
 		}
-		//waitGroup.Wait()
+		// waitGroup.Wait()
 	}
 
 	// remember the collected descendents
